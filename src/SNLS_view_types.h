@@ -48,7 +48,40 @@ namespace experimental {
       static constexpr bool value = decltype(check<T>(0))::value;
    };
 
-   // This was largely auto-generated when asking google a SFINAE type solution for the layout issue
+   template <class T>
+   class has_size_no_proj {
+   private:
+      template <class U>
+      static constexpr auto check(int) -> decltype(std::declval<U>().size_noproj(), std::true_type{}) {
+         return std::true_type{};
+      }
+
+      template <class>
+      static constexpr std::false_type check(...) {
+         return std::false_type{};
+      }
+
+   public:
+      static constexpr bool value = decltype(check<T>(0))::value;
+   };
+
+   template <class T>
+   class has_layout {
+   private:
+      template <class U>
+      static constexpr auto check(int) -> decltype(std::declval<U>().layout, std::true_type{}) {
+         return std::true_type{};
+      }
+
+      template <class>
+      static constexpr std::false_type check(...) {
+         return std::false_type{};
+      }
+
+   public:
+      static constexpr bool value = decltype(check<T>(0))::value;
+   };
+
    template <class T>
    class has_get_data {
    private:
@@ -76,6 +109,18 @@ contains_data(const V& view) {
       return view.get_layout().size_noproj() > 0;
    } else {
       return view.layout.size_noproj() > 0;
+   }
+}
+
+template<class V>
+__snls_hdev__
+constexpr
+auto
+get_layout(const V& view) {
+   if constexpr (experimental::has_get_layout<V>::value) {
+      return view.get_layout();
+   } else if constexpr (experimental::has_layout<V>::value){
+      return view.layout;
    }
 }
 
@@ -113,7 +158,7 @@ contains_data(const V& view) {
             return (*m_view)(m_index, m_offset + arg0, args...);
          }
          else {
-            return (*m_view)(m_offset + arg0, m_index, args...);
+            return (*m_view)(m_offset + arg0, args..., m_index);
          }
       }
 

@@ -71,8 +71,6 @@ endif()
 
 if (FMT_DIR)
    find_package(fmt CONFIG PATHS ${FMT_DIR})
-else()
-   message(WARNING "FMT_DIR was not provided. This is a requirement for camp as of v2024.02.0. Ignore this warning if using older versions of the RAJA Portability Suite")
 endif()
 
 ################################
