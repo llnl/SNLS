@@ -100,6 +100,18 @@ namespace experimental {
    };
 }
 
+template <typename T>
+struct is_raja_view : std::false_type {};
+
+template <typename DataType, typename LayoutType>
+struct is_raja_view<RAJA::View<DataType, LayoutType>> : std::true_type {};
+
+template <typename T>
+struct is_raja_multiview : std::false_type {};
+
+template <typename DataType, typename LayoutType>
+struct is_raja_multiview<RAJA::MultiView<DataType, LayoutType>> : std::true_type {};
+
 template<class V>
 __snls_hdev__
 constexpr
@@ -129,8 +141,7 @@ get_layout(const V& view) {
    // Should probably work out some form of SFINAE to ensure T that we're templated on
    // is an actual View that we can use.
    template<class T>
-   class SubView {
-   public:
+   struct SubView {
       constexpr SubView() = delete;
 
       constexpr SubView& operator=(const SubView& other) = default;
@@ -154,7 +165,7 @@ get_layout(const V& view) {
       auto&
       operator()(Arg0 arg0, Args... args) const
       {
-         if constexpr (experimental::has_get_layout<T>::value) {
+         if constexpr (is_raja_view<typename std::decay_t<std::remove_pointer_t<decltype(m_view)>>>::value) {
             return (*m_view)(m_index, m_offset + arg0, args...);
          }
          else {
@@ -209,8 +220,18 @@ get_layout(const V& view) {
          }
       }
 
+      __snls_hdev__
+      bool is_nullptr(size_t i) const {
+         if constexpr (is_raja_multiview<typename std::decay_t<std::remove_pointer_t<decltype(m_view)>>>::value) {
+            return (get_data()[i] == nullptr);
+         } else {
+            return false;
+         }
+      }
+
       T* m_view;
       size_t m_index;
       size_t m_offset;
    };
+
 }
