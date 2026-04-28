@@ -18,6 +18,18 @@ endforeach()
 if(USE_RAJA_ONLY OR USE_BATCH_SOLVERS)
 
 ################################
+# caliper (optional)
+################################
+#
+# Some RAJA/CHAI builds may propagate `caliper` as a plain link item.
+# If we load Caliper's package config early, it defines an imported target
+# named `caliper`, which avoids emitting `-lcaliper` without a matching -L.
+#
+if (caliper_DIR)
+   find_package(caliper CONFIG PATHS ${caliper_DIR})
+endif()
+
+################################
 # camp
 ################################
 
