@@ -48,7 +48,40 @@ namespace experimental {
       static constexpr bool value = decltype(check<T>(0))::value;
    };
 
-   // This was largely auto-generated when asking google a SFINAE type solution for the layout issue
+   template <class T>
+   class has_size_no_proj {
+   private:
+      template <class U>
+      static constexpr auto check(int) -> decltype(std::declval<U>().size_noproj(), std::true_type{}) {
+         return std::true_type{};
+      }
+
+      template <class>
+      static constexpr std::false_type check(...) {
+         return std::false_type{};
+      }
+
+   public:
+      static constexpr bool value = decltype(check<T>(0))::value;
+   };
+
+   template <class T>
+   class has_layout {
+   private:
+      template <class U>
+      static constexpr auto check(int) -> decltype(std::declval<U>().layout, std::true_type{}) {
+         return std::true_type{};
+      }
+
+      template <class>
+      static constexpr std::false_type check(...) {
+         return std::false_type{};
+      }
+
+   public:
+      static constexpr bool value = decltype(check<T>(0))::value;
+   };
+
    template <class T>
    class has_get_data {
    private:
@@ -67,6 +100,18 @@ namespace experimental {
    };
 }
 
+template <typename T>
+struct is_raja_view : std::false_type {};
+
+template <typename DataType, typename LayoutType>
+struct is_raja_view<RAJA::View<DataType, LayoutType>> : std::true_type {};
+
+template <typename T>
+struct is_raja_multiview : std::false_type {};
+
+template <typename DataType, typename LayoutType>
+struct is_raja_multiview<RAJA::MultiView<DataType, LayoutType>> : std::true_type {};
+
 template<class V>
 __snls_hdev__
 constexpr
@@ -79,13 +124,24 @@ contains_data(const V& view) {
    }
 }
 
+template<class V>
+__snls_hdev__
+constexpr
+auto
+get_layout(const V& view) {
+   if constexpr (experimental::has_get_layout<V>::value) {
+      return view.get_layout();
+   } else if constexpr (experimental::has_layout<V>::value){
+      return view.layout;
+   }
+}
+
    // We really don't care what View class we're using as the sub-view just wraps it up
    // and then allows us to take a slice/window of the original view
    // Should probably work out some form of SFINAE to ensure T that we're templated on
    // is an actual View that we can use.
    template<class T>
-   class SubView {
-   public:
+   struct SubView {
       constexpr SubView() = delete;
 
       constexpr SubView& operator=(const SubView& other) = default;
@@ -109,11 +165,11 @@ contains_data(const V& view) {
       auto&
       operator()(Arg0 arg0, Args... args) const
       {
-         if constexpr (experimental::has_get_layout<T>::value) {
+         if constexpr (is_raja_view<typename std::decay_t<std::remove_pointer_t<decltype(m_view)>>>::value) {
             return (*m_view)(m_index, m_offset + arg0, args...);
          }
          else {
-            return (*m_view)(m_offset + arg0, m_index, args...);
+            return (*m_view)(m_offset + arg0, args..., m_index);
          }
       }
 
@@ -164,8 +220,18 @@ contains_data(const V& view) {
          }
       }
 
+      __snls_hdev__
+      bool is_nullptr(size_t i) const {
+         if constexpr (is_raja_multiview<typename std::decay_t<std::remove_pointer_t<decltype(m_view)>>>::value) {
+            return (get_data()[i] == nullptr);
+         } else {
+            return false;
+         }
+      }
+
       T* m_view;
       size_t m_index;
       size_t m_offset;
    };
+
 }

@@ -18,6 +18,18 @@ endforeach()
 if(USE_RAJA_ONLY OR USE_BATCH_SOLVERS)
 
 ################################
+# caliper (optional)
+################################
+#
+# Some RAJA/CHAI builds may propagate `caliper` as a plain link item.
+# If we load Caliper's package config early, it defines an imported target
+# named `caliper`, which avoids emitting `-lcaliper` without a matching -L.
+#
+if (caliper_DIR)
+   find_package(caliper CONFIG PATHS ${caliper_DIR})
+endif()
+
+################################
 # camp
 ################################
 
@@ -71,8 +83,6 @@ endif()
 
 if (FMT_DIR)
    find_package(fmt CONFIG PATHS ${FMT_DIR})
-else()
-   message(WARNING "FMT_DIR was not provided. This is a requirement for camp as of v2024.02.0. Ignore this warning if using older versions of the RAJA Portability Suite")
 endif()
 
 ################################
